@@ -1,6 +1,6 @@
 # cmd-ai
 
-`cmd-ai` is a command-line interface tool designed to integrate AI capabilities into your terminal workflow. It enables users to interact with AI models directly from the command line for various tasks such as text generation, code assistance, and more.
+**cmd-ai** is a natural language shell assistant powered by OpenAI. It turns plain English (or any prompt) into real, executable shell commands — with safety, explanation, history, and autocompletion built-in.
 
 ![Example Usage](example.png)
 
