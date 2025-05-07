@@ -12,6 +12,20 @@ npm install -g ai-cli
 
 Ensure you have Node.js installed on your system before proceeding with the installation.
 
+## Configuration
+
+Before using the assistant, set your OpenAI API key:
+
+```bash
+ai config
+```
+
+Your key is securely stored in:
+
+```bash
+~/.ai-config.json
+```
+
 ## Usage
 
 Once installed, you can invoke this library using the `ai` command. For example:
@@ -21,6 +35,8 @@ ai Tell me how much free space is left on the disk
 ```
 
 This will first display the suggested command based on your input. If you confirm by pressing "Enter," the command will then be executed.
+
+Here some pre-defined commands:
 
 ```bash
 ai [your task here] [--flags]
@@ -48,9 +64,8 @@ ai install-autocomplete
 
 This will:
 
-Generate the autocomplete script at `~/.ai-cli-completion.sh`
-
-Add source `~/.ai-cli-completion.sh` to your `.bashrc` or `.zshrc`
+- Generate the autocomplete script at `~/.ai-cli-completion.sh`
+- Add source `~/.ai-cli-completion.sh` to your `.bashrc` or `.zshrc`
 
 You can also do it manually:
 
@@ -76,20 +91,6 @@ View them using:
 
 ```bash
 ai history
-```
-
-## Configuration
-
-Before using the assistant, set your OpenAI API key:
-
-```bash
-ai config
-```
-
-Your key is securely stored in:
-
-```bash
-~/.ai-config.json
 ```
 
 ## License
