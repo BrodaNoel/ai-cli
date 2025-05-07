@@ -102,7 +102,20 @@ Autocomplete:
 }
 
 function installAutocompleteScript() {
+  const sourcePath = path.join(process.cwd(), 'cmd-ai-completion.sh');
   const targetPath = path.join(os.homedir(), '.cmd-ai-completion.sh');
+
+  if (!fs.existsSync(sourcePath)) {
+    console.error(`Autocomplete script not found at: ${sourcePath}`);
+    process.exit(1);
+  }
+
+  // Copy script to home directory
+  fs.copyFileSync(sourcePath, targetPath);
+  fs.chmodSync(targetPath, 0o644);
+  console.log(`✅ Autocomplete script copied to: ${targetPath}`);
+
+  // Detect shell config file
   const shell = process.env.SHELL || '';
   const rcFile = shell.includes('zsh')
     ? path.join(os.homedir(), '.zshrc')
@@ -110,43 +123,25 @@ function installAutocompleteScript() {
     ? path.join(os.homedir(), '.bashrc')
     : null;
 
-  const scriptContent = `
-# cmd-ai autocomplete
-_ai_cli_completions() {
-  local cur prev opts
-  COMPREPLY=()
-  cur="\${COMP_WORDS[COMP_CWORD]}"
-  opts="config history man install-autocomplete --help -h --dry --explain"
-
-  if [[ \${cur} == -* ]]; then
-    COMPREPLY=( $(compgen -W "--dry --explain --help -h" -- \${cur}) )
-    return 0
-  fi
-
-  COMPREPLY=( $(compgen -W "\${opts}" -- \${cur}) )
-  return 0
-}
-
-complete -F _ai_cli_completions ai
-`;
-
-  fs.writeFileSync(targetPath, scriptContent.trim() + '\n', { mode: 0o644 });
-  console.log(`Autocomplete script installed at: ${targetPath}`);
+  const sourceCmd = `source ${targetPath}`;
 
   if (rcFile) {
-    const rcContent = fs.readFileSync(rcFile, 'utf-8');
-    const sourceCmd = `source ${targetPath}`;
+    const rcContent = fs.existsSync(rcFile)
+      ? fs.readFileSync(rcFile, 'utf-8')
+      : '';
     if (!rcContent.includes(sourceCmd)) {
       fs.appendFileSync(rcFile, `\n# cmd-ai autocomplete\n${sourceCmd}\n`);
-      console.log(`Updated ${rcFile} to include autocomplete.`);
+      console.log(`✅ Updated ${rcFile} to include autocomplete.`);
     } else {
-      console.log(`${rcFile} already includes the autocomplete script.`);
+      console.log(`ℹ️ ${rcFile} already includes the autocomplete script.`);
     }
-    console.log('Please restart your terminal or run:');
-    console.log(`source ${rcFile}`);
+
+    console.log('\nℹ️ Please restart your terminal or run:');
+    console.log(`   source ${rcFile}\n`);
   } else {
-    console.log('Could not detect shell config file. Please manually add:');
-    console.log(`source ${targetPath}`);
+    console.log('\n🚨 Could not detect shell config file automatically.');
+    console.log(`Please manually add this line to your shell config:`);
+    console.log(`   source ${targetPath}\n`);
   }
 }
 
