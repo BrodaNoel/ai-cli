@@ -94,6 +94,7 @@ Examples:
 Flags:
   --explain     Ask AI to explain the command before returning it
   --dry         Show the command but do not execute it
+  --version     Show the package version
 
 Autocomplete:
   Run the following to enable autocomplete:
@@ -177,6 +178,15 @@ async function main() {
 
   if (['man', '--help', '-h'].includes(args[0])) {
     printHelp();
+    rl.close();
+    return;
+  }
+
+  if (args[0] === '--version') {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8')
+    );
+    console.log(`cmd-ai v${pkg.version}`);
     rl.close();
     return;
   }
