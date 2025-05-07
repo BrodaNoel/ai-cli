@@ -98,16 +98,11 @@ Flags:
 Autocomplete:
   Run the following to enable autocomplete:
     ai install-autocomplete
-
-  Or manually:
-    ai autocomplete > ~/.ai-cli-completion.sh
-    echo "source ~/.ai-cli-completion.sh" >> ~/.bashrc   # or .zshrc
-    source ~/.bashrc   # or source ~/.zshrc
 `);
 }
 
 function installAutocompleteScript() {
-  const targetPath = path.join(os.homedir(), '.ai-cli-completion.sh');
+  const targetPath = path.join(os.homedir(), '.cmd-ai-completion.sh');
   const shell = process.env.SHELL || '';
   const rcFile = shell.includes('zsh')
     ? path.join(os.homedir(), '.zshrc')
@@ -116,7 +111,7 @@ function installAutocompleteScript() {
     : null;
 
   const scriptContent = `
-# ai-cli autocomplete
+# cmd-ai autocomplete
 _ai_cli_completions() {
   local cur prev opts
   COMPREPLY=()
@@ -142,7 +137,7 @@ complete -F _ai_cli_completions ai
     const rcContent = fs.readFileSync(rcFile, 'utf-8');
     const sourceCmd = `source ${targetPath}`;
     if (!rcContent.includes(sourceCmd)) {
-      fs.appendFileSync(rcFile, `\n# ai-cli autocomplete\n${sourceCmd}\n`);
+      fs.appendFileSync(rcFile, `\n# cmd-ai autocomplete\n${sourceCmd}\n`);
       console.log(`Updated ${rcFile} to include autocomplete.`);
     } else {
       console.log(`${rcFile} already includes the autocomplete script.`);
@@ -159,7 +154,7 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args[0] === 'config') {
-    console.log('\nTo use ai-cli, you need a valid OpenAI API key.');
+    console.log('\nTo use cmd-ai, you need a valid OpenAI API key.');
     console.log('If you don’t have one, follow these steps:\n');
     console.log('1. Go to https://platform.openai.com/account/api-keys');
     console.log('2. Log in or create a free OpenAI account');

@@ -1,4 +1,4 @@
-# ai-cli autocomplete
+# cmd-ai autocomplete
 
 _ai_cli_completions() {
   local cur prev opts

@@ -1,13 +1,13 @@
-# ai-cli
+# cmd-ai
 
-`ai-cli` is a command-line interface tool designed to integrate AI capabilities into your terminal workflow. It enables users to interact with AI models directly from the command line for various tasks such as text generation, code assistance, and more.
+`cmd-ai` is a command-line interface tool designed to integrate AI capabilities into your terminal workflow. It enables users to interact with AI models directly from the command line for various tasks such as text generation, code assistance, and more.
 
 ## Installation
 
-To install `ai-cli`, use the following command:
+To install `cmd-ai`, use the following command:
 
 ```bash
-npm install -g ai-cli
+npm install -g cmd-ai
 ```
 
 Ensure you have Node.js installed on your system before proceeding with the installation.
@@ -64,20 +64,12 @@ ai install-autocomplete
 
 This will:
 
-- Generate the autocomplete script at `~/.ai-cli-completion.sh`
-- Add source `~/.ai-cli-completion.sh` to your `.bashrc` or `.zshrc`
-
-You can also do it manually:
-
-```bash
-ai autocomplete > ~/.ai-cli-completion.sh
-echo "source ~/.ai-cli-completion.sh" >> ~/.bashrc   # or ~/.zshrc
-source ~/.bashrc                                     # or ~/.zshrc
-```
+- Generate the autocomplete script at `~/.cmd-ai-completion.sh`
+- Add source `~/.cmd-ai-completion.sh` to your `.bashrc` or `.zshrc`
 
 ## Safety
 
-`ai-cli` is designed with safety in mind. It includes mechanisms to filter harmful or inappropriate content. However, always review AI-generated outputs before using them in critical applications.
+`cmd-ai` is designed with safety in mind. It includes mechanisms to filter harmful or inappropriate content. However, always review AI-generated outputs before using them in critical applications.
 
 ## History
 
