@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
-const readline = require('readline');
-const { exec } = require('child_process');
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import readline from 'readline';
+import { exec } from 'child_process';
 
 const CONFIG_PATH = path.join(os.homedir(), '.ai-config.json');
 const HISTORY_PATH = path.join(os.homedir(), '.ai-command-history.json');
