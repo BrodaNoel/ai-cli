@@ -3,6 +3,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import readline from 'readline';
 import { exec } from 'child_process';
 
@@ -183,9 +184,13 @@ async function main() {
   }
 
   if (args[0] === '--version') {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+
     const pkg = JSON.parse(
       fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8')
     );
+
     console.log(`cmd-ai v${pkg.version}`);
     rl.close();
     return;
