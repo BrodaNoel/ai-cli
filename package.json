@@ -1,5 +1,5 @@
 {
-  "name": "ai-cli",
+  "name": "cmd-ai",
   "version": "0.0.1",
   "description": "Natural language shell command generator and executor powered by AI",
   "bin": {
@@ -13,6 +13,7 @@
     "terminal",
     "shell",
     "assistant",
+    "cmd",
     "command-line",
     "bash",
     "zsh",
