@@ -1,6 +1,6 @@
 {
   "name": "cmd-ai",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Natural language shell command generator and executor powered by AI",
   "bin": {
     "ai": "./bin/ai.js"
