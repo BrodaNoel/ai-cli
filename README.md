@@ -1,6 +1,6 @@
 # cmd-ai
 
-**cmd-ai** is a natural language shell assistant powered by OpenAI. It turns plain English (or any prompt) into real, executable shell commands — with safety, explanation, history, and autocompletion built-in.
+**cmd-ai** is a natural language shell assistant powered by AI. It turns plain English (or any prompt) into real, executable shell commands — with safety, explanation, history, and autocompletion built-in.
 
 ![Example Usage](example.png)
 
