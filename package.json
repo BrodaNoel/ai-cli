@@ -1,0 +1,30 @@
+{
+  "name": "ai-cli",
+  "version": "0.0.1",
+  "description": "Natural language shell command generator and executor powered by AI",
+  "bin": {
+    "ai": "./bin/ai.js"
+  },
+  "type": "module",
+  "scripts": {},
+  "keywords": [
+    "cli",
+    "openai",
+    "terminal",
+    "shell",
+    "assistant",
+    "command-line",
+    "bash",
+    "zsh",
+    "autocomplete"
+  ],
+  "author": {
+    "email": "brodanoel@gmail.com",
+    "name": "Broda Noel",
+    "url": "https://github.com/BrodaNoel"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
