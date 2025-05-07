@@ -159,12 +159,28 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args[0] === 'config') {
-    const key = await ask('Enter your OpenAI API key: ');
-    fs.writeFileSync(
-      CONFIG_PATH,
-      JSON.stringify({ apiKey: key.trim() }, null, 2)
-    );
-    console.log('API key saved successfully.');
+    console.log('\nTo use ai-cli, you need a valid OpenAI API key.');
+    console.log('If you don’t have one, follow these steps:\n');
+    console.log('1. Go to https://platform.openai.com/account/api-keys');
+    console.log('2. Log in or create a free OpenAI account');
+    console.log('3. Click “+ Create new secret key”');
+    console.log('4. Copy the key (starts with "sk-...") and paste it below\n');
+
+    const key = await ask('Paste your OpenAI API key: ');
+    const trimmed = key.trim();
+
+    if (!trimmed.startsWith('sk-') || trimmed.length < 30) {
+      console.error(
+        'Invalid key format. It should start with "sk-" and be longer than 30 characters.'
+      );
+      rl.close();
+      process.exit(1);
+    }
+
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify({ apiKey: trimmed }, null, 2));
+    console.log('\n✅ API key saved successfully.');
+    console.log('You can now run commands like:');
+    console.log('  ai list all files in this folder\n');
     rl.close();
     return;
   }
