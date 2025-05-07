@@ -2,6 +2,8 @@
 
 `cmd-ai` is a command-line interface tool designed to integrate AI capabilities into your terminal workflow. It enables users to interact with AI models directly from the command line for various tasks such as text generation, code assistance, and more.
 
+![Example Usage](example.png)
+
 ## Installation
 
 To install `cmd-ai`, use the following command:
