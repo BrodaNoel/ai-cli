@@ -26,8 +26,11 @@ ai config
 
 This command will guide you through choosing between the local (default) and openai providers.
 
-- **local**: Uses the onnx-community/Qwen3-0.6B-ONNX model running directly on your machine. No external API key is required. When you select the local provider for the first time using ai config, the necessary model files (approximately 500MB) will be automatically downloaded with a progress indicator. These files are cached locally for future use.
+- **local**: Uses the onnx-community/Qwen3-0.6B-ONNX model running directly on your machine. No external API key is required. When you select the local provider for the first time using ai config, the necessary model files (approximately 300MB for the model and 2GB for the ONNX data) will be automatically downloaded with a progress indicator. These files are cached locally for future use.
+- **gemini**: Uses the Google Gemini API (`gemini-1.5-flash-latest`). You will need to provide your Google AI Studio API key.
 - **openai**: Uses the OpenAI API. You will need to provide your OpenAI API key for this option.
+
+The default provider is **local**.
 
 Your configuration is stored securely in:
 ```bash

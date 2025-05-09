@@ -29,6 +29,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@google/genai": "^0.13.0",
     "@huggingface/transformers": "^3.0.0"
   }
 }
