@@ -26,7 +26,7 @@ ai config
 
 This command will guide you through choosing between the local (default) and openai providers.
 
-- **local**: Uses the Qwen3-0.6B model running directly on your machine. No external API key is required for this option. The model is downloaded automatically on first use.
+- **local**: Uses the onnx-community/Qwen3-0.6B-ONNX model running directly on your machine. No external API key is required. When you select the local provider for the first time using ai config, the necessary model files (approximately 500MB) will be automatically downloaded with a progress indicator. These files are cached locally for future use.
 - **openai**: Uses the OpenAI API. You will need to provide your OpenAI API key for this option.
 
 Your configuration is stored securely in:
