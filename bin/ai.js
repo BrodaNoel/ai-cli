@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import readline from 'readline';
 import { exec } from 'child_process';
 
-import { pipeline } from '@xenova/transformers';
+import { pipeline } from '@huggingface/transformers';
 
 const CONFIG_PATH = path.join(os.homedir(), '.ai-config.json');
 const HISTORY_PATH = path.join(os.homedir(), '.ai-command-history.json');
@@ -18,6 +18,8 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
+
+let lastProgress = 0;
 
 function ask(question) {
   return new Promise(resolve => rl.question(question, resolve));
@@ -102,7 +104,7 @@ Flags:
   --version     Show the package version
 
 Providers:
-  local       Uses the Qwen3-0.6B model running locally. (Default)
+  local       Uses the Qwen3-0.6B ONNX model running locally. (Default)
   openai      Uses the OpenAI API (requires API key).
 
 Autocomplete:
@@ -155,24 +157,59 @@ function installAutocompleteScript() {
   }
 }
 
+// Callback function for download progress
+function downloadProgressCallback({ file, progress, total }) {
+    if (progress && total) {
+        const percentage = Math.round(progress / total * 100);
+        if (percentage > lastProgress) {
+            process.stdout.clearLine(0);
+            process.stdout.cursorTo(0);
+            const fileName = file ? path.basename(file) : 'Model file';
+            process.stdout.write(`Downloading ${fileName}: ${percentage}%\n`);
+            lastProgress = percentage;
+        }
+        if (percentage === 100) {
+            process.stdout.write('\n');
+            lastProgress = 0;
+        }
+    }
+}
+
+// Function to download the local model explicitly
+async function downloadLocalModel() {
+    console.log(`\nInitiating download for local model "${LOCAL_MODEL_ID}"...`);
+    try {
+        // Use pipeline to trigger download. It will cache the model files.
+        // We don't need to assign it to localPipeline here, just trigger the download.
+        await pipeline('text-generation', LOCAL_MODEL_ID, { dtype: "fp32" }, {
+            progress_callback: downloadProgressCallback
+        });
+        console.log('Model download complete.');
+    } catch (error) {
+        console.error('\nError during model download:', error);
+        throw new Error('Local model download failed. Please check your internet connection and disk space.');
+    }
+}
+
+
 async function generateCommandLocal(userPrompt, osInfo, explainMode) {
   if (!localPipeline) {
-    console.log(`\nLoading local model "${LOCAL_MODEL_ID}"... (This may take a few minutes the first time)`);
+    console.log(`\nLoading local model "${LOCAL_MODEL_ID}"... (This may take a moment on first load)`);
     try {
-      localPipeline = await pipeline('text-generation', LOCAL_MODEL_ID); // [1, 3]
+      localPipeline = await pipeline('text-generation', LOCAL_MODEL_ID, { dtype: "fp32" }, {
+           progress_callback: downloadProgressCallback
+      });
       console.log('Model loaded successfully.');
     } catch (error) {
-      console.error('Error loading local model:', error);
-      console.log('Falling back to OpenAI (if configured)...');
+      console.error('\nError loading local model:', error);
       localPipeline = 'error';
-      throw new Error('Local model loading failed.');
+      throw new Error('Local model loading or initialization failed.');
     }
   }
 
   if (localPipeline === 'error') {
-      throw new Error('Local model is not available.');
+      throw new Error('Local model is not available or failed to load.');
   }
-
 
   // Qwen3 instruct format is typically ChatML: <|im_start|>user\nPrompt<|im_end|>\n<|im_start|>assistant\n
   // We instruct it to act as a shell assistant and output only the command.
@@ -181,7 +218,10 @@ OS: ${osInfo}
 ${explainMode ? 'Explain what the command does, then return only the command.\n' : ''}Respond only with safe and correct shell command(s), no commentary or headings.
 Output *only* the command required to perform the task.`;
 
-  const prompt = `<|im_start|>system\n${systemMessage}<|im_end|>\n<|im_start|>user\n${userPrompt}<|im_end|>\n<|im_start|>assistant\n`; // [5]
+  const prompt = [
+    { role: "system", content: systemMessage },
+    { role: "user", content: userPrompt },
+  ];
 
   try {
     const output = await localPipeline(prompt, {
@@ -189,16 +229,10 @@ Output *only* the command required to perform the task.`;
       temperature: 0.3,
     });
 
-    let generatedText = output[0]?.generated_text || '';
+    let response = output[0]?.generated_text[2].content
+    response = response.replace(/<think>[\s\S]*?<\/think>/g, '');
 
-    const assistantStartTag = '<|im_start|>assistant\n';
-    const assistantIndex = generatedText.indexOf(assistantStartTag);
-    if (assistantIndex !== -1) {
-        generatedText = generatedText.substring(assistantIndex + assistantStartTag.length).trim();
-    }
-
-    // Further refinement: remove any remaining start/end tokens or unwanted text
-     generatedText = generatedText.split('<|im_end|>')[0].trim();
+    let generatedText = response || '';
 
     // Sometimes models might repeat the prompt or add conversational filler,
     // a simple heuristic is to look for the first line that looks like a command.
@@ -206,23 +240,49 @@ Output *only* the command required to perform the task.`;
     let command = generatedText; // Default to the whole output
 
     // Look for a line starting with a common command or symbol
-    const commandStartRegex = /^\s*([a-zA-Z0-9_-]+|\.|\/|~)/;
+    // More robust check: look for a line that *doesn't* look like conversation
+    const conversationalLineRegex = /^(?:(hi|hello|hey|greetings|i am|i'm|as a large language model|i cannot|i'm sorry|i understand|okay|sure|alright|of course|you can|you could|to do that|here is|here's)|[^\s]+:)/i; // Add more conversational starts, check for role-like colons
+    const commandStartRegex = /^\s*([a-zA-Z0-9_-]+|\.|\/|~)/; // Original command start regex
+
     for (const line of lines) {
-        if (commandStartRegex.test(line.trim())) {
-            command = line.trim();
-            break;
+        const trimmedLine = line.trim();
+        if (trimmedLine === '') continue; // Skip empty lines
+
+        // If explain mode is on, the command might be in a code block after explanation.
+        if (explainMode && trimmedLine.startsWith('`')) {
+             // Simple code block detection (might need more robust parsing for multi-line blocks)
+             const codeBlockMatch = trimmedLine.match(/^`+([\s\S]*?)`+$/);
+             if (codeBlockMatch && codeBlockMatch[1]) {
+                 command = codeBlockMatch[1].trim();
+                 break; // Found a code block, assume it's the command
+             }
         }
-         // If explain mode is on, the command might be after the explanation.
-         // This is a simple approach and might need more sophisticated parsing
-         // depending on how the model behaves with the prompt.
-         if (explainMode && line.trim().startsWith('`') && line.trim().endsWith('`')) {
-             command = line.trim().replace(/^`+/, '').replace(/`+$/, ''); // Extract code block
-             break;
+
+        // If not in a code block or explain mode, look for a line that looks like a command
+        // and doesn't look like conversational filler.
+        if (commandStartRegex.test(trimmedLine) && !conversationalLineRegex.test(trimmedLine)) {
+            command = trimmedLine;
+            break; // Found a line that looks like a command
+        }
+
+        // If no specific command line found and not in explain mode code block,
+        // the first non-empty non-conversational line might be the command or part of it.
+        // Keep this as a fallback if the above doesn't match, but prioritize the above.
+         if (!commandStartRegex.test(command) && !conversationalLineRegex.test(trimmedLine) && !explainMode) {
+             command = trimmedLine; // Use the first non-conversational line as a potential command start
+             // Don't break yet, a later line might be a better match with commandStartRegex
          }
     }
 
      // Basic cleanup: remove leading/trailing quotes or backticks
-    command = command.replace(/^['"`]+/, '').replace(/['"`]+$/, '');
+    command = command.replace(/^['"`\s]+/, '').replace(/['"`\s]+$/, ''); // Also trim whitespace
+
+     // Basic check to prevent just returning conversational filler if extraction failed
+    if (conversationalLineRegex.test(command.toLowerCase()) || command.split(/\s+/).length < 1) {
+        console.warn('Warning: Could not confidently extract a command from the model output. Reviewing full output.');
+         // In case of extraction failure, return the full generated text for user review
+         return generatedText;
+    }
 
 
     return command;
@@ -275,19 +335,18 @@ Task: "${userPrompt}"
 async function main() {
   const args = process.argv.slice(2);
 
-  let config = {};
+  let config = {
+      provider: 'local'
+  };
   if (fs.existsSync(CONFIG_PATH)) {
       try {
-          config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+          const existingConfig = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+           // Merge existing config with defaults, ensuring 'provider' is kept if present
+          config = { ...config, ...existingConfig };
       } catch (e) {
           console.error('Error reading config file:', e.message);
-          config = {}; // Reset config if invalid JSON
+          // Keep default config if file is corrupt
       }
-  }
-
-  // Set default provider if not in config
-  if (!config.provider) {
-      config.provider = 'local';
   }
 
 
@@ -298,7 +357,15 @@ async function main() {
     console.log(`Current provider: ${currentProvider}`);
 
     const provider = await ask('Choose AI provider (local, openai) [local]: ');
-    config.provider = provider.trim().toLowerCase() || 'local';
+    const selectedProvider = provider.trim().toLowerCase() || 'local';
+
+    if (selectedProvider !== 'local' && selectedProvider !== 'openai') {
+        console.error('Invalid provider selected. Please choose "local" or "openai".');
+        rl.close();
+        process.exit(1);
+    }
+
+    config.provider = selectedProvider;
 
     if (config.provider === 'openai') {
       console.log('\nTo use the OpenAI provider, you need a valid API key.');
@@ -321,15 +388,24 @@ async function main() {
       config.apiKey = trimmed;
     } else {
         // Remove apiKey if switching away from openai
-        delete config.apiKey;
+        if (config.apiKey) {
+            delete config.apiKey;
+        }
+        // Trigger download if local is selected
+        try {
+             await downloadLocalModel();
+        } catch (e) {
+            console.error(`\nFailed to download local model. You may need to try running "ai config" again or check your connection.`);
+             rl.close();
+             process.exit(1);
+        }
     }
-
 
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
     console.log('\n✅ Configuration saved successfully.');
     if (config.provider === 'local') {
          console.log(`Using local model "${LOCAL_MODEL_ID}".`);
-         console.log('The model will be downloaded on first use.');
+         console.log('The model files are now downloaded or updated.');
     } else if (config.provider === 'openai') {
          console.log('Using OpenAI API.');
     }
@@ -375,7 +451,7 @@ async function main() {
       console.log(
         `\n#${idx + 1} (${entry.timestamp})\nPrompt: ${
           entry.prompt
-        }\nCommand:\n${entry.command}\nExecuted: ${entry.executed}`
+        }\nCommand:\n${entry.command}\nExecuted: ${entry.executed}${entry.provider ? ` (Provider: ${entry.provider})` : ''}`
       );
     });
     rl.close();
@@ -391,6 +467,12 @@ async function main() {
   const userPrompt = filteredArgs.join(' ');
   const osInfo = `${os.platform()} ${os.release()}`;
 
+  if (!userPrompt) {
+       printHelp();
+       rl.close();
+       process.exit(0);
+  }
+
   let output = '';
   let executedProvider = config.provider; // Track which provider was actually used
 
@@ -399,20 +481,19 @@ async function main() {
         output = await generateCommandLocal(userPrompt, osInfo, explainMode);
     } else if (config.provider === 'openai') {
         if (!config.apiKey) {
-            console.error('Missing OpenAI API key. Please run "ai config" first.');
+            console.error('Missing OpenAI API key for the "openai" provider. Please run "ai config" first.');
              rl.close();
             process.exit(1);
         }
         output = await generateCommandOpenAI(userPrompt, osInfo, config.apiKey, explainMode);
     } else {
+        // Should not happen with default config handling, but as a safeguard
         console.error(`Invalid provider configured: ${config.provider}. Please run "ai config".`);
         rl.close();
         process.exit(1);
     }
   } catch (error) {
-      console.error(`Error generating command: ${error.message}`);
-      // Optionally, fallback to OpenAI if local failed?
-      // For now, just exit on error from the chosen provider.
+      console.error(`\nError generating command: ${error.message}`); // Add newline before error
       rl.close();
       process.exit(1);
   }
@@ -451,6 +532,9 @@ async function main() {
     rl.close();
     return;
   }
+
+  // Close readline before executing command to avoid interference
+  rl.close();
 
   exec(output, (error, stdout, stderr) => {
     if (error) {
