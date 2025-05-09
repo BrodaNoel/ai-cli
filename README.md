@@ -14,7 +14,7 @@ To install `cmd-ai`, use the following command:
 npm install -g cmd-ai
 ```
 
-Ensure you have Node.js installed (version 18 or higher recommended) on your system before proceeding with the installation. The first time you use the local model, it will automatically download the model files (approximately 500MB), which may take some time.
+Ensure you have Node.js installed (version 18 or higher recommended) on your system before proceeding with the installation. The first time you use the local model, it will automatically download the model files (approximately 300MB for the model and 2gb for the ONNX data), which may take some time.
 
 ## Configuration
 
