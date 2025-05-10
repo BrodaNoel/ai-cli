@@ -2,6 +2,8 @@
 
 **cmd-ai** is a natural language shell assistant powered by AI. It turns plain English (or any prompt) into real, executable shell commands — with safety, explanation, history, and autocompletion built-in.
 
+By default, it uses a small local AI model (Qwen3-0.6B) for speed and privacy, but you can configure it to use the OpenAI API.
+
 ![Example Usage](example.png)
 
 ## Installation
@@ -12,18 +14,22 @@ To install `cmd-ai`, use the following command:
 npm install -g cmd-ai
 ```
 
-Ensure you have Node.js installed on your system before proceeding with the installation.
+Ensure you have Node.js installed (version 18 or higher recommended) on your system before proceeding with the installation. The first time you use the local model, it will automatically download the model files (approximately 300MB for the model and 2gb for the ONNX data), which may take some time.
 
 ## Configuration
 
-Before using the assistant, set your OpenAI API key:
+Set your AI provider and potentially your OpenAI API key:
 
 ```bash
 ai config
 ```
 
-Your key is securely stored in:
+This command will guide you through choosing between the local (default) and openai providers.
 
+- **local**: Uses the onnx-community/Qwen3-0.6B-ONNX model running directly on your machine. No external API key is required. When you select the local provider for the first time using ai config, the necessary model files (approximately 500MB) will be automatically downloaded with a progress indicator. These files are cached locally for future use.
+- **openai**: Uses the OpenAI API. You will need to provide your OpenAI API key for this option.
+
+Your configuration is stored securely in:
 ```bash
 ~/.ai-config.json
 ```
