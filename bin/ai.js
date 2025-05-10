@@ -33,7 +33,7 @@ function saveHistory(entry) {
       // Limit history size to prevent huge files
       history = JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf-8')).slice(-1000); // Keep last 1000 entries
     } catch (e) {
-      console.error("Error reading history file, starting fresh:", e.message);
+      console.error('Error reading history file, starting fresh:', e.message);
       history = [];
     }
   }
@@ -41,7 +41,7 @@ function saveHistory(entry) {
   try {
     fs.writeFileSync(HISTORY_PATH, JSON.stringify(history, null, 2));
   } catch (e) {
-    console.error("Error writing history file:", e.message);
+    console.error('Error writing history file:', e.message);
   }
 }
 
@@ -55,19 +55,36 @@ function isDangerous(command) {
 
   // Split into potential subcommands (separated by ;, &&, ||)
   // Basic split might not handle complex quoting/escaping perfectly, but good for common cases
-  const subcommands = normalized.split(/;|&&|\|\||\(|\)|\{|\}/).map(s => s.trim()).filter(s => s !== '');
+  const subcommands = normalized
+    .split(/;|&&|\|\||\(|\)|\{|\}/)
+    .map(s => s.trim())
+    .filter(s => s !== '');
 
   const blackListPatterns = [
-    'rm -rf /', 'rm -rf ~', 'rm -rf .*', 'rm -rf *',
-    'rm --no-preserve-root', 'rm -r --no-preserve-root /',
-    'mkfs', 'mkfs.ext4', 'mkfs.xfs', 'mkfs.vfat',
-    'dd if=', 'dd of=/dev/', // More specific dd pattern
-    ':(){:|:&};:', '>:()', // Fork bomb variants
-    'shutdown', 'reboot', 'halt', 'poweroff',
-    'init 0', 'init 6',
+    'rm -rf /',
+    'rm -rf ~',
+    'rm -rf .*',
+    'rm -rf *',
+    'rm --no-preserve-root',
+    'rm -r --no-preserve-root /',
+    'mkfs',
+    'mkfs.ext4',
+    'mkfs.xfs',
+    'mkfs.vfat',
+    'dd if=',
+    'dd of=/dev/', // More specific dd pattern
+    ':(){:|:&};:',
+    '>:()', // Fork bomb variants
+    'shutdown',
+    'reboot',
+    'halt',
+    'poweroff',
+    'init 0',
+    'init 6',
     'kill -9 1', // Killing init/systemd
     'mv /', // Moving root
-    'chmod 000', 'chmod -r 000 /',
+    'chmod 000',
+    'chmod -r 000 /',
     'chown root', // Changing ownership of critical files/dirs
     'yes > /dev/', // Overwriting devices
     '>/dev/', // Overwriting devices
@@ -75,16 +92,25 @@ function isDangerous(command) {
     'crontab -r', // Removing all cron jobs
     'echo .* >', // Dangerous output redirection
     'cat /dev/urandom >', // Dangerous output redirection
-    'find / -exec rm', 'find / -delete', // Dangerous find commands
-    'wipefs', 'shred', // Data destruction tools
+    'find / -exec rm',
+    'find / -delete', // Dangerous find commands
+    'wipefs',
+    'shred', // Data destruction tools
     'nohup .* >/dev/null 2>&1 &', // Running commands detached and discarding output (can hide malicious activity) - maybe too broad? Let's skip for now.
-    'curl .* | sh', 'wget .* | sh', // Downloading and piping to shell
+    'curl .* | sh',
+    'wget .* | sh', // Downloading and piping to shell
     'base64 -d <<< .* | sh', // Decoding and piping to shell
   ];
 
   // Basic check for pipe to sh/bash/etc. or similar execution
-  if (/\s*\|\s*(sh|bash|zsh|csh|ksh|python|perl|ruby)\s*(-c|\s|$)/.test(normalized)) {
-    console.warn('Potential dangerous pattern: Piping output to a shell or interpreter.');
+  if (
+    /\s*\|\s*(sh|bash|zsh|csh|ksh|python|perl|ruby)\s*(-c|\s|$)/.test(
+      normalized
+    )
+  ) {
+    console.warn(
+      'Potential dangerous pattern: Piping output to a shell or interpreter.'
+    );
     return true; // Flag as dangerous
   }
 
@@ -93,7 +119,6 @@ function isDangerous(command) {
     return blackListPatterns.some(pattern => sub.startsWith(pattern));
   });
 }
-
 
 function printHelp() {
   console.log(`
@@ -130,7 +155,9 @@ function installAutocompleteScript() {
 
   if (!fs.existsSync(sourcePath)) {
     console.error(`Autocomplete script not found at: ${sourcePath}\n`);
-    console.error(`Please ensure you are running 'ai install-autocomplete' from the directory where cmd-ai was installed globally, or locate the 'cmd-ai-completion.sh' script manually.\n`);
+    console.error(
+      `Please ensure you are running 'ai install-autocomplete' from the directory where cmd-ai was installed globally, or locate the 'cmd-ai-completion.sh' script manually.\n`
+    );
     process.exit(1);
   }
 
@@ -143,7 +170,6 @@ function installAutocompleteScript() {
     console.error(`Error copying autocomplete script: ${e.message}\n`);
     process.exit(1);
   }
-
 
   // Detect shell config file
   const shell = process.env.SHELL || '';
@@ -167,39 +193,47 @@ function installAutocompleteScript() {
       if (!rcContent.includes(sourceCmd)) {
         // Check if the source command exists line-by-line or within commented sections
         const lines = rcContent.split('\n');
-        const alreadySourced = lines.some(line => line.trim().replace(/^#\s*/, '').includes(sourceCmd));
+        const alreadySourced = lines.some(line =>
+          line.trim().replace(/^#\s*/, '').includes(sourceCmd)
+        );
 
         if (!alreadySourced) {
           fs.appendFileSync(rcFile, `\n# cmd-ai autocomplete\n${sourceCmd}\n`);
           console.log(`✅ Updated ${rcFile} to include autocomplete.`);
         } else {
-          console.log(`ℹ️ ${rcFile} already includes the autocomplete script (or a commented version).`);
+          console.log(
+            `ℹ️ ${rcFile} already includes the autocomplete script (or a commented version).`
+          );
         }
-
       } else {
         console.log(`ℹ️ ${rcFile} already includes the autocomplete script.`);
       }
 
       console.log('\nℹ️ Please restart your terminal or run:');
       console.log(`   source ${rcFile}\n`);
-
     } catch (e) {
-      console.error(`Error updating shell config file ${rcFile}: ${e.message}\n`);
+      console.error(
+        `Error updating shell config file ${rcFile}: ${e.message}\n`
+      );
       console.log('\n🚨 Could not update shell config file automatically.');
-      console.log(`Please manually add this line to your shell config (${rcFile} or similar):`);
+      console.log(
+        `Please manually add this line to your shell config (${rcFile} or similar):`
+      );
       console.log(`   ${sourceCmd}\n`);
     }
-
   } else {
     console.log('\n🚨 Could not detect shell config file automatically.');
-    console.log(`Please manually add this line to your shell config (.bashrc, .zshrc, etc.):`);
+    console.log(
+      `Please manually add this line to your shell config (.bashrc, .zshrc, etc.):`
+    );
     console.log(`   ${sourceCmd}\n`);
   }
 }
 
 // Callback function for download progress
 function downloadProgressCallback({ file, progress, total }) {
-  if (progress !== undefined && total !== undefined) { // Check for undefined as progress might be NaN/Infinity sometimes
+  if (progress !== undefined && total !== undefined) {
+    // Check for undefined as progress might be NaN/Infinity sometimes
     const percentage = Math.round((progress / total) * 100);
     if (percentage > lastProgress || percentage === 0 || percentage === 100) {
       process.stdout.clearLine(0);
@@ -221,7 +255,11 @@ function downloadProgressCallback({ file, progress, total }) {
 
 // Function to download the local model explicitly
 async function downloadLocalModel() {
-  if (localPipelineStatus === 'loaded' || localPipelineStatus === 'loading' || localPipelineStatus === 'downloading') {
+  if (
+    localPipelineStatus === 'loaded' ||
+    localPipelineStatus === 'loading' ||
+    localPipelineStatus === 'downloading'
+  ) {
     console.log('Local model is already loaded, loading, or downloading.');
     return;
   }
@@ -231,15 +269,22 @@ async function downloadLocalModel() {
   try {
     // Use pipeline to trigger download. It will cache the model files.
     // We don't need to assign it to localPipeline here, just trigger the download.
-    await pipeline('text-generation', LOCAL_MODEL_ID, { dtype: "fp32" }, {
-      progress_callback: downloadProgressCallback
-    });
+    await pipeline(
+      'text-generation',
+      LOCAL_MODEL_ID,
+      { dtype: 'fp32' },
+      {
+        progress_callback: downloadProgressCallback,
+      }
+    );
     console.log('Model download complete.');
     localPipelineStatus = 'unloaded';
   } catch (error) {
     console.error('\nError during model download:', error);
     localPipelineStatus = 'error';
-    throw new Error('Local model download failed. Please check your internet connection, disk space, and permissions.');
+    throw new Error(
+      'Local model download failed. Please check your internet connection, disk space, and permissions.'
+    );
   }
 }
 
@@ -269,8 +314,11 @@ function parseModelOutput(output, explainMode) {
 
     // Remove leading conversational filler from explanation part
     if (explanation) {
-      const conversationalStarts = /^(?:(hi|hello|hey|greetings|i am|i'm|as a large language model|i cannot|i'm sorry|i understand|okay|sure|alright|of course|you can|you could|to do that|here is|here's)|[^\s]+:)/i;
-      const explanationLines = explanation.split('\n').filter(line => line.trim() !== '');
+      const conversationalStarts =
+        /^(?:(hi|hello|hey|greetings|i am|i'm|as a large language model|i cannot|i'm sorry|i understand|okay|sure|alright|of course|you can|you could|to do that|here is|here's)|[^\s]+:)/i;
+      const explanationLines = explanation
+        .split('\n')
+        .filter(line => line.trim() !== '');
       let cleanedExplanationLines = [];
       for (const line of explanationLines) {
         if (conversationalStarts.test(line.trim())) {
@@ -282,14 +330,13 @@ function parseModelOutput(output, explainMode) {
       explanation = cleanedExplanationLines.join('\n').trim();
       if (explanation === '') explanation = null; // If cleanup resulted in empty string
     }
-
-
   } else {
     // No fenced code block found. Fallback to line-by-line analysis.
     // Use a more robust check for command start, including symbols like >, |
-    const commandStartRegex = /^[a-zA-Z0-9_-]+|^\.|\/|~|^[>|!$%&*+,-./:;=?@^_~]/; // Starts with word char, ., /, ~, or common shell symbols/operators
-    const conversationalLineRegex = /^(?:(hi|hello|hey|greetings|i am|i'm|as a large language model|i cannot|i'm sorry|i understand|okay|sure|alright|of course|you can|you could|to do that|here is|here's)|[^\s]+:)/i;
-
+    const commandStartRegex =
+      /^[a-zA-Z0-9_-]+|^\.|\/|~|^[>|!$%&*+,-./:;=?@^_~]/; // Starts with word char, ., /, ~, or common shell symbols/operators
+    const conversationalLineRegex =
+      /^(?:(hi|hello|hey|greetings|i am|i'm|as a large language model|i cannot|i'm sorry|i understand|okay|sure|alright|of course|you can|you could|to do that|here is|here's)|[^\s]+:)/i;
 
     const lines = output.split('\n'); // Keep empty lines for line numbering context in slicing
 
@@ -299,7 +346,10 @@ function parseModelOutput(output, explainMode) {
       if (trimmedLine === '') continue; // Skip empty lines for this check
 
       // Find the first line that looks like a command and not conversation
-      if (commandStartRegex.test(trimmedLine) && !conversationalLineRegex.test(trimmedLine.toLowerCase())) {
+      if (
+        commandStartRegex.test(trimmedLine) &&
+        !conversationalLineRegex.test(trimmedLine.toLowerCase())
+      ) {
         firstCommandLineIndex = i;
         break;
       }
@@ -324,12 +374,12 @@ function parseModelOutput(output, explainMode) {
       command = command.replace(/^['"`\s]+/, '').replace(/['"`\s]+$/, '');
       // Remove leading/trailing common shell prompts if model included them
       command = command.replace(/^\$\s+/, '').replace(/^#\s+/, '');
-
-
     } else {
       // No line found that looks like a command start.
       // This might happen if the model is overly conversational or gave an error/unparseable response.
-      console.warn('Warning: Could not identify a clear command start line or code block in the model output.');
+      console.warn(
+        'Warning: Could not identify a clear command start line or code block in the model output.'
+      );
       // In this case, return the full output as the command, and no explanation separation was possible.
       command = output.trim(); // Use the original trimmed output
       explanation = null; // No clear explanation/command separation possible
@@ -338,7 +388,9 @@ function parseModelOutput(output, explainMode) {
 
   // Final check on command - if extraction resulted in empty string, fallback to full output
   if (command === '') {
-    console.warn('Warning: Command extraction resulted in an empty string. Using full output as command.');
+    console.warn(
+      'Warning: Command extraction resulted in an empty string. Using full output as command.'
+    );
     command = output.trim();
     explanation = null; // Reset explanation as separation failed
   }
@@ -349,15 +401,20 @@ function parseModelOutput(output, explainMode) {
     if (explanation === '') explanation = null;
   }
 
-
   return { explanation, command };
 }
 
-
 // Modify generateCommandLocal to return raw output string
-async function generateCommandLocal(userPrompt, osInfo, shellInfo, explainMode) {
+async function generateCommandLocal(
+  userPrompt,
+  osInfo,
+  shellInfo,
+  explainMode
+) {
   if (localPipelineStatus === 'error') {
-    throw new Error('Local model is in an error state. Please re-configure using "ai config".');
+    throw new Error(
+      'Local model is in an error state. Please re-configure using "ai config".'
+    );
   }
   if (localPipelineStatus === 'downloading') {
     console.log('Waiting for local model download to complete...');
@@ -377,14 +434,20 @@ async function generateCommandLocal(userPrompt, osInfo, shellInfo, explainMode) 
     }
   }
 
-
   if (!localPipeline) {
     localPipelineStatus = 'loading';
-    console.log(`\nLoading local model "${LOCAL_MODEL_ID}"... (This may take a moment on first load)`);
+    console.log(
+      `\nLoading local model "${LOCAL_MODEL_ID}"... (This may take a moment on first load)`
+    );
     try {
-      localPipeline = await pipeline('text-generation', LOCAL_MODEL_ID, { dtype: "fp32" }, {
-        progress_callback: downloadProgressCallback
-      });
+      localPipeline = await pipeline(
+        'text-generation',
+        LOCAL_MODEL_ID,
+        { dtype: 'fp32' },
+        {
+          progress_callback: downloadProgressCallback,
+        }
+      );
       console.log('Model loaded successfully.');
       localPipelineStatus = 'loaded';
     } catch (error) {
@@ -402,12 +465,16 @@ async function generateCommandLocal(userPrompt, osInfo, shellInfo, explainMode) 
 The user will ask for a task he wants to accomplish or needs help with.
 For example: "List all files in this folder", "Remove all docker containers", "List files in current directory and save to file.txt", etc.
 Your goal is to provide the user with a safe and correct shell command(s) to accomplish the task.
-${explainMode ? 'First, provide a brief explanation of the command. Then, provide the command, ideally in a fenced code block (e.g., ```bash\n...\n```).\n' : 'Respond only with the command, ideally in a fenced code block (e.g., ```bash\n...\n```). No commentary or headings.'}
+${
+  explainMode
+    ? 'First, provide a brief explanation of the command. Then, provide the command, ideally in a fenced code block (e.g., ```bash\n...\n```).\n'
+    : 'Respond only with the command, ideally in a fenced code block (e.g., ```bash\n...\n```). No commentary or headings.'
+}
 Output *only* the explanation and the command, or just the command.`; // Added instruction for code block
 
   const prompt = [
-    { role: "system", content: systemMessage },
-    { role: "user", content: userPrompt },
+    { role: 'system', content: systemMessage },
+    { role: 'user', content: userPrompt },
   ];
 
   try {
@@ -416,18 +483,22 @@ Output *only* the explanation and the command, or just the command.`; // Added i
       temperature: 0.3,
     });
 
-    let response = output[0]?.generated_text[2].content
+    let response = output[0]?.generated_text[2].content;
     response = response.replace(/<think>[\s\S]*?<\/think>/g, '');
 
     let generatedText = response || '';
 
     return generatedText;
-
   } catch (error) {
     console.error('Error generating command with local model:', error);
     // Check if the error suggests model file issues
-    if (error.message.includes('Not a valid file') || error.message.includes('Error loading model')) {
-      console.error('It seems the local model files are missing or corrupt. Try running "ai config" to re-download.');
+    if (
+      error.message.includes('Not a valid file') ||
+      error.message.includes('Error loading model')
+    ) {
+      console.error(
+        'It seems the local model files are missing or corrupt. Try running "ai config" to re-download.'
+      );
       localPipelineStatus = 'error'; // Indicate a potential persistent issue
       localPipeline = null;
     }
@@ -435,7 +506,13 @@ Output *only* the explanation and the command, or just the command.`; // Added i
   }
 }
 
-async function generateCommandGemini(userPrompt, osInfo, shellInfo, apiKey, explainMode) {
+async function generateCommandGemini(
+  userPrompt,
+  osInfo,
+  shellInfo,
+  apiKey,
+  explainMode
+) {
   const config = {
     responseMimeType: 'text/plain',
   };
@@ -455,31 +532,37 @@ async function generateCommandGemini(userPrompt, osInfo, shellInfo, apiKey, expl
   `.trim();
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST',
-      headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify({
-      contents: [{
-        parts: [{
-        text: fullPrompt
-        }],
-        role: "user"
-      }],
-      generationConfig: config
-      })
-    }).then(res => res.json());
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: fullPrompt,
+                },
+              ],
+              role: 'user',
+            },
+          ],
+          generationConfig: config,
+        }),
+      }
+    ).then(res => res.json());
 
     const rawOutput = response.candidates[0].content.parts[0].text;
 
     if (!rawOutput || rawOutput.trim() === '') {
-      throw new Error("Gemini API returned an empty response.");
+      throw new Error('Gemini API returned an empty response.');
     }
 
     return rawOutput.trim();
-
   } catch (error) {
     console.error('Google Gemini API error:', error.message);
     let detail = '';
@@ -493,7 +576,13 @@ async function generateCommandGemini(userPrompt, osInfo, shellInfo, apiKey, expl
 }
 
 // Function to generate command using OpenAI API
-async function generateCommandOpenAI(userPrompt, osInfo, shellInfo, apiKey, explainMode) {
+async function generateCommandOpenAI(
+  userPrompt,
+  osInfo,
+  shellInfo,
+  apiKey,
+  explainMode
+) {
   const explainText = explainMode
     ? 'First, provide a brief explanation of the command. Then, provide the command, ideally in a fenced code block (e.g., ```bash\n...\n```).\n'
     : 'Respond only with the command, ideally in a fenced code block (e.g., ```bash\n...\n```). No commentary or headings.\n'; // Added instruction for code block
@@ -542,7 +631,6 @@ Task: "${userPrompt}"
   }
 }
 
-
 async function main() {
   // Ensure readline is closed on process exit for clean shutdown
   process.on('exit', () => {
@@ -560,11 +648,10 @@ async function main() {
     process.exit(1);
   });
 
-
   const args = process.argv.slice(2);
 
   let config = {
-    provider: 'local'
+    provider: 'local',
   };
   if (fs.existsSync(CONFIG_PATH)) {
     try {
@@ -579,10 +666,11 @@ async function main() {
 
   // Ensure provider is one of the valid options
   if (!['local', 'openai', 'gemini'].includes(config.provider)) {
-    console.warn(`Invalid provider "${config.provider}" found in config. Falling back to "local". Run "ai config" to fix.`);
+    console.warn(
+      `Invalid provider "${config.provider}" found in config. Falling back to "local". Run "ai config" to fix.`
+    );
     config.provider = 'local';
   }
-
 
   if (args[0] === 'config') {
     console.log('\nConfigure cmd-ai settings.');
@@ -590,11 +678,15 @@ async function main() {
     const currentProvider = config.provider || 'local';
     console.log(`Current provider: ${currentProvider}`);
 
-    const provider = await ask('Choose AI provider (local, openai, gemini) [local]: ');
+    const provider = await ask(
+      'Choose AI provider (local, openai, gemini) [local]: '
+    );
     const selectedProvider = provider.trim().toLowerCase() || 'local';
 
     if (!['local', 'openai', 'gemini'].includes(selectedProvider)) {
-      console.error('Invalid provider selected. Please choose "local", "openai", or "gemini".');
+      console.error(
+        'Invalid provider selected. Please choose "local", "openai", or "gemini".'
+      );
       rl.close();
       process.exit(1);
     }
@@ -609,7 +701,9 @@ async function main() {
       console.log('1. Go to https://platform.openai.com/account/api-keys');
       console.log('2. Log in or create a free OpenAI account');
       console.log('3. Click “+ Create new secret key”');
-      console.log('4. Copy the key (starts with "sk-...") and paste it below\n');
+      console.log(
+        '4. Copy the key (starts with "sk-...") and paste it below\n'
+      );
 
       const key = await ask('Paste your OpenAI API key: ');
       const trimmed = key.trim();
@@ -628,7 +722,9 @@ async function main() {
     if (config.provider === 'gemini') {
       // Remove apiKey if switching away from openai
       if (config.apiKey) delete config.apiKey;
-      console.log('\nTo use the Google Gemini provider, you need a valid API key.');
+      console.log(
+        '\nTo use the Google Gemini provider, you need a valid API key.'
+      );
       console.log('If you don’t have one, follow these steps:\n');
       console.log('1. Go to https://aistudio.google.com/app/apikey');
       console.log('2. Log in or create a Google account');
@@ -637,8 +733,11 @@ async function main() {
       const key = await ask('Paste your Google Gemini API key: ');
       const trimmed = key.trim();
 
-      if (trimmed.length < 30) { // Basic length check
-        console.error('Invalid key format. The key should be longer than 30 characters.');
+      if (trimmed.length < 30) {
+        // Basic length check
+        console.error(
+          'Invalid key format. The key should be longer than 30 characters.'
+        );
         rl.close();
         process.exit(1);
       }
@@ -727,8 +826,13 @@ async function main() {
       }
       history.forEach((entry, idx) => {
         console.log(
-          `\n--- History Entry #${idx + 1} ---\nTimestamp: ${entry.timestamp}\nPrompt: ${entry.prompt
-          }\nCommand:\n${entry.command}\nExecuted: ${entry.executed}${entry.provider ? ` (Provider: ${entry.provider})` : ''}${entry.notes ? `\nNotes: ${entry.notes}` : ''}`
+          `\n--- History Entry #${idx + 1} ---\nTimestamp: ${
+            entry.timestamp
+          }\nPrompt: ${entry.prompt}\nCommand:\n${entry.command}\nExecuted: ${
+            entry.executed
+          }${entry.provider ? ` (Provider: ${entry.provider})` : ''}${
+            entry.notes ? `\nNotes: ${entry.notes}` : ''
+          }`
         );
       });
     } catch (e) {
@@ -746,8 +850,9 @@ async function main() {
   );
   const userPrompt = filteredArgs.join(' ');
   const osInfo = `${os.platform()} ${os.release()} (${os.arch()})`; // Add architecture
-  const shellInfo = process.env.SHELL ? path.basename(process.env.SHELL) : 'sh, zsh, ksh, etc';
-
+  const shellInfo = process.env.SHELL
+    ? path.basename(process.env.SHELL)
+    : 'sh, zsh, ksh, etc';
 
   if (!userPrompt) {
     printHelp();
@@ -761,36 +866,67 @@ async function main() {
   try {
     if (config.provider === 'local') {
       console.log('Explain mode:', explainMode);
-      rawModelOutput = await generateCommandLocal(userPrompt, osInfo, shellInfo, explainMode);
+      rawModelOutput = await generateCommandLocal(
+        userPrompt,
+        osInfo,
+        shellInfo,
+        explainMode
+      );
     } else if (config.provider === 'openai') {
       if (!config.apiKey) {
-        console.error('Missing OpenAI API key for the "openai" provider. Please run "ai config" first.');
+        console.error(
+          'Missing OpenAI API key for the "openai" provider. Please run "ai config" first.'
+        );
         rl.close();
         process.exit(1);
       }
-      rawModelOutput = await generateCommandOpenAI(userPrompt, osInfo, shellInfo, config.apiKey, explainMode);
+      rawModelOutput = await generateCommandOpenAI(
+        userPrompt,
+        osInfo,
+        shellInfo,
+        config.apiKey,
+        explainMode
+      );
     } else if (config.provider === 'gemini') {
       if (!config.geminiApiKey) {
-        console.error('Missing Google Gemini API key for the "gemini" provider. Please run "ai config" first.');
+        console.error(
+          'Missing Google Gemini API key for the "gemini" provider. Please run "ai config" first.'
+        );
         rl.close();
         process.exit(1);
       }
       // Gemini API does not support streaming by default with generateContent, so no progress display here easily
-      rawModelOutput = await generateCommandGemini(userPrompt, osInfo, shellInfo, config.geminiApiKey, explainMode);
+      rawModelOutput = await generateCommandGemini(
+        userPrompt,
+        osInfo,
+        shellInfo,
+        config.geminiApiKey,
+        explainMode
+      );
     } else {
       // Should not happen with default config handling, but as a safeguard
-      console.error(`Invalid provider configured: ${config.provider}. Please run "ai config".`);
+      console.error(
+        `Invalid provider configured: ${config.provider}. Please run "ai config".`
+      );
     }
   } catch (error) {
     console.error(`\nError generating command: ${error.message}`);
-    saveHistory({ prompt: userPrompt, command: 'Error generating command', executed: false, provider: executedProvider, notes: `Generation failed: ${error.message}` });
+    saveHistory({
+      prompt: userPrompt,
+      command: 'Error generating command',
+      executed: false,
+      provider: executedProvider,
+      notes: `Generation failed: ${error.message}`,
+    });
     rl.close();
     process.exit(1);
   }
 
   // --- Parse the raw model output ---
-  const { explanation, command } = parseModelOutput(rawModelOutput, explainMode);
-
+  const { explanation, command } = parseModelOutput(
+    rawModelOutput,
+    explainMode
+  );
 
   console.log(`\nAI Response (Provider: ${executedProvider}):`);
 
@@ -805,22 +941,32 @@ async function main() {
   console.log(command);
   console.log('----------------------');
 
-
   if (!command || command.trim() === '') {
     console.error('\nCould not extract a valid command from the AI response.');
     console.log('Full AI output was:');
     console.log(rawModelOutput); // Show user the raw output if parsing failed
-    saveHistory({ prompt: userPrompt, command: rawModelOutput, executed: false, provider: executedProvider, notes: "Command extraction failed" }); // Save raw output if command extraction fails
+    saveHistory({
+      prompt: userPrompt,
+      command: rawModelOutput,
+      executed: false,
+      provider: executedProvider,
+      notes: 'Command extraction failed',
+    }); // Save raw output if command extraction fails
     rl.close();
     return;
   }
-
 
   if (isDangerous(command)) {
     console.error(
       '\n** WARNING: This command looks dangerous and will not be executed automatically. **'
     );
-    saveHistory({ prompt: userPrompt, command: command, executed: false, provider: executedProvider, notes: "Dangerous command detected" });
+    saveHistory({
+      prompt: userPrompt,
+      command: command,
+      executed: false,
+      provider: executedProvider,
+      notes: 'Dangerous command detected',
+    });
     rl.close();
     return;
   }
@@ -835,14 +981,26 @@ async function main() {
 
   if (!shouldRun) {
     console.log('Operation cancelled.');
-    saveHistory({ prompt: userPrompt, command: command, executed: false, provider: executedProvider, notes: "Cancelled by user" });
+    saveHistory({
+      prompt: userPrompt,
+      command: command,
+      executed: false,
+      provider: executedProvider,
+      notes: 'Cancelled by user',
+    });
     rl.close();
     return;
   }
 
   if (dryRun) {
     console.log('\n[Dry run] Command not executed.');
-    saveHistory({ prompt: userPrompt, command: command, executed: false, provider: executedProvider, notes: "Dry run" });
+    saveHistory({
+      prompt: userPrompt,
+      command: command,
+      executed: false,
+      provider: executedProvider,
+      notes: 'Dry run',
+    });
     rl.close();
     return;
   }
@@ -854,14 +1012,25 @@ async function main() {
   exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error(`\nExecution error:\n${error.message}`);
-      saveHistory({ prompt: userPrompt, command: command, executed: false, provider: executedProvider, notes: `Execution failed: ${error.message}` });
+      saveHistory({
+        prompt: userPrompt,
+        command: command,
+        executed: false,
+        provider: executedProvider,
+        notes: `Execution failed: ${error.message}`,
+      });
     } else {
       if (stdout) console.log(`\nStdout:\n${stdout}`);
       if (stderr) console.error(`\nStderr:\n${stderr}`);
       if (!stdout && !stderr) {
         console.log('\nCommand executed successfully with no output.');
       }
-      saveHistory({ prompt: userPrompt, command: command, executed: true, provider: executedProvider });
+      saveHistory({
+        prompt: userPrompt,
+        command: command,
+        executed: true,
+        provider: executedProvider,
+      });
     }
   });
 }
@@ -873,21 +1042,22 @@ process.on('unhandledRejection', (reason, promise) => {
   if (rl && !rl.closed) {
     rl.close();
   }
-  if (!process.exitCode) { // Prevent double exit
+  if (!process.exitCode) {
+    // Prevent double exit
     process.exit(1); // Exit with a non-zero code
   }
 });
 
 // Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
+process.on('uncaughtException', err => {
   console.error('Uncaught Exception:', err);
   if (rl && !rl.closed) {
     rl.close();
   }
-  if (!process.exitCode) { // Prevent double exit
+  if (!process.exitCode) {
+    // Prevent double exit
     process.exit(1); // Exit with a non-zero code
   }
 });
-
 
 main();
