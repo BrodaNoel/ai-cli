@@ -7,7 +7,6 @@ import { fileURLToPath } from 'url';
 import readline from 'readline';
 import { exec } from 'child_process';
 
-import { GoogleGenAI } from '@google/genai';
 import { pipeline } from '@huggingface/transformers';
 
 const CONFIG_PATH = path.join(os.homedir(), '.ai-config.json');
@@ -356,7 +355,7 @@ function parseModelOutput(output, explainMode) {
 
 
 // Modify generateCommandLocal to return raw output string
-async function generateCommandLocal(userPrompt, osInfo, explainMode) {
+async function generateCommandLocal(userPrompt, osInfo, shellInfo, explainMode) {
   if (localPipelineStatus === 'error') {
     throw new Error('Local model is in an error state. Please re-configure using "ai config".');
   }
@@ -398,8 +397,11 @@ async function generateCommandLocal(userPrompt, osInfo, explainMode) {
 
   // We instruct it to act as a shell assistant. /no_think is a special instruction to avoid thinking for qwen3 models.
   // The instruction now asks it to explain *then* provide the command, optionally in a code block.
-  const systemMessage = `/no_think You are a shell assistant running on ${osInfo}.
-Respond with a safe and correct shell command(s).
+  const systemMessage = `
+/no_think You are a helpful shell (${shellInfo}) assistant, running on ${osInfo} OS.
+The user will ask for a task he wants to accomplish or needs help with.
+For example: "List all files in this folder", "Remove all docker containers", "List files in current directory and save to file.txt", etc.
+Your goal is to provide the user with a safe and correct shell command(s) to accomplish the task.
 ${explainMode ? 'First, provide a brief explanation of the command. Then, provide the command, ideally in a fenced code block (e.g., ```bash\n...\n```).\n' : 'Respond only with the command, ideally in a fenced code block (e.g., ```bash\n...\n```). No commentary or headings.'}
 Output *only* the explanation and the command, or just the command.`; // Added instruction for code block
 
@@ -433,8 +435,7 @@ Output *only* the explanation and the command, or just the command.`; // Added i
   }
 }
 
-async function generateCommandGemini(userPrompt, osInfo, apiKey, explainMode) {
-  const genAI = new GoogleGenAI({ apiKey: apiKey });
+async function generateCommandGemini(userPrompt, osInfo, shellInfo, apiKey, explainMode) {
   const config = {
     responseMimeType: 'text/plain',
   };
@@ -445,17 +446,31 @@ async function generateCommandGemini(userPrompt, osInfo, apiKey, explainMode) {
     : 'Respond only with the command, ideally in a fenced code block (e.g., ```bash\n...\n```). No commentary or headings.\n';
 
   const fullPrompt = `
-  You are a shell assistant running on ${osInfo}.
+  You are a helpful shell (${shellInfo}) assistant, running on ${osInfo} OS.
+  The user will ask for a task he wants to accomplish or needs help with.
+  For example: "List all files in this folder", "Remove all docker containers", "List files in current directory and save to file.txt", etc.
+  Your goal is to provide the user with a safe and correct shell command(s) to accomplish the task.
   ${explainText}
   Task: "${userPrompt}"
   `.trim();
 
   try {
-    const response = await genAI.models.generateContent({
-      model: model,
-      config: config,
-      contents: fullPrompt,
-    });
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey
+      },
+      body: JSON.stringify({
+      contents: [{
+        parts: [{
+        text: fullPrompt
+        }],
+        role: "user"
+      }],
+      generationConfig: config
+      })
+    }).then(res => res.json());
 
     const rawOutput = response.candidates[0].content.parts[0].text;
 
@@ -478,13 +493,16 @@ async function generateCommandGemini(userPrompt, osInfo, apiKey, explainMode) {
 }
 
 // Function to generate command using OpenAI API
-async function generateCommandOpenAI(userPrompt, osInfo, apiKey, explainMode) {
+async function generateCommandOpenAI(userPrompt, osInfo, shellInfo, apiKey, explainMode) {
   const explainText = explainMode
     ? 'First, provide a brief explanation of the command. Then, provide the command, ideally in a fenced code block (e.g., ```bash\n...\n```).\n'
     : 'Respond only with the command, ideally in a fenced code block (e.g., ```bash\n...\n```). No commentary or headings.\n'; // Added instruction for code block
 
   const fullPrompt = `
-You are a shell assistant running on ${osInfo}.
+You are a helpful shell (${shellInfo}) assistant, running on ${osInfo} OS.
+  The user will ask for a task he wants to accomplish or needs help with.
+  For example: "List all files in this folder", "Remove all docker containers", "List files in current directory and save to file.txt", etc.
+  Your goal is to provide the user with a safe and correct shell command(s) to accomplish the task.
 ${explainText}
 Task: "${userPrompt}"
 `.trim();
@@ -728,6 +746,8 @@ async function main() {
   );
   const userPrompt = filteredArgs.join(' ');
   const osInfo = `${os.platform()} ${os.release()} (${os.arch()})`; // Add architecture
+  const shellInfo = process.env.SHELL ? path.basename(process.env.SHELL) : 'sh, zsh, ksh, etc';
+
 
   if (!userPrompt) {
     printHelp();
@@ -741,14 +761,14 @@ async function main() {
   try {
     if (config.provider === 'local') {
       console.log('Explain mode:', explainMode);
-      rawModelOutput = await generateCommandLocal(userPrompt, osInfo, explainMode);
+      rawModelOutput = await generateCommandLocal(userPrompt, osInfo, shellInfo, explainMode);
     } else if (config.provider === 'openai') {
       if (!config.apiKey) {
         console.error('Missing OpenAI API key for the "openai" provider. Please run "ai config" first.');
         rl.close();
         process.exit(1);
       }
-      rawModelOutput = await generateCommandOpenAI(userPrompt, osInfo, config.apiKey, explainMode);
+      rawModelOutput = await generateCommandOpenAI(userPrompt, osInfo, shellInfo, config.apiKey, explainMode);
     } else if (config.provider === 'gemini') {
       if (!config.geminiApiKey) {
         console.error('Missing Google Gemini API key for the "gemini" provider. Please run "ai config" first.');
@@ -756,7 +776,7 @@ async function main() {
         process.exit(1);
       }
       // Gemini API does not support streaming by default with generateContent, so no progress display here easily
-      rawModelOutput = await generateCommandGemini(userPrompt, osInfo, config.geminiApiKey, explainMode);
+      rawModelOutput = await generateCommandGemini(userPrompt, osInfo, shellInfo, config.geminiApiKey, explainMode);
     } else {
       // Should not happen with default config handling, but as a safeguard
       console.error(`Invalid provider configured: ${config.provider}. Please run "ai config".`);
