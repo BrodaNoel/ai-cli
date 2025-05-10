@@ -30,7 +30,10 @@ function saveHistory(entry) {
   if (fs.existsSync(HISTORY_PATH)) {
     try {
       history = JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf-8'));
-    } catch {}
+    } catch (error) {
+      console.error('🚨 Error saving command on history:');
+      console.error(error);
+    }
   }
   history.push({ ...entry, timestamp: new Date().toISOString() });
   fs.writeFileSync(HISTORY_PATH, JSON.stringify(history, null, 2));
