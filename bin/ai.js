@@ -31,7 +31,7 @@ function saveHistory(entry) {
     try {
       history = JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf-8'));
     } catch (error) {
-      console.error('🚨 Error saving command on history:');
+      console.error('🚨 Error saving the command history:');
       console.error(error);
     }
   }
