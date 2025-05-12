@@ -796,8 +796,10 @@ async function main() {
         fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8')
       );
       console.log(`cmd-ai v${pkg.version}`);
-    } catch (e) {
-      console.error('Could not read package.json to determine version.');
+    } catch (error) {
+      console.error(
+        'Could not read package.json to determine version: ' + error.message
+      );
       console.log('cmd-ai version unknown');
     }
 
@@ -1036,7 +1038,7 @@ async function main() {
 }
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', reason => {
   console.error('Unhandled Rejection:', reason);
   // Application specific error handling
   if (rl && !rl.closed) {
