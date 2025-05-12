@@ -1,5 +1,5 @@
 {
-  "files.associations": {
+"files.associations": {
     "*.json": "json"
   },
   "editor.formatOnSave": true,
