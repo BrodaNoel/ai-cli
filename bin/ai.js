@@ -715,6 +715,8 @@ async function main() {
         rl.close();
         process.exit(1);
       }
+
+      config.apiKey = trimmed;
     } else {
       if (config.apiKey) delete config.apiKey;
     }
