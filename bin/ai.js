@@ -30,7 +30,7 @@ function saveHistory(entry) {
   let history = [];
   if (fs.existsSync(HISTORY_PATH)) {
     try {
-      // Limit history size to prevent huge files
+// Limit history size to prevent huge files
       history = JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf-8')).slice(-1000); // Keep last 1000 entries
     } catch (e) {
       console.error('Error reading history file, starting fresh:', e.message);
