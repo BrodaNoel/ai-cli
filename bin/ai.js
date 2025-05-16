@@ -6,8 +6,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import readline from 'readline';
 import { exec } from 'child_process';
-
 import { pipeline } from '@huggingface/transformers';
+import { downloadProgressCallback } from '../utils/logs.js';
 
 const CONFIG_PATH = path.join(os.homedir(), '.ai-config.json');
 const HISTORY_PATH = path.join(os.homedir(), '.ai-command-history.json');
@@ -19,8 +19,6 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-
-let lastProgress = 0;
 
 function ask(question) {
   return new Promise(resolve => rl.question(question, resolve));
@@ -227,29 +225,6 @@ function installAutocompleteScript() {
       `Please manually add this line to your shell config (.bashrc, .zshrc, etc.):`
     );
     console.log(`   ${sourceCmd}\n`);
-  }
-}
-
-// Callback function for download progress
-function downloadProgressCallback({ file, progress, total }) {
-  if (progress !== undefined && total !== undefined) {
-    // Check for undefined as progress might be NaN/Infinity sometimes
-    const percentage = Math.round((progress / total) * 100);
-    if (percentage > lastProgress || percentage === 0 || percentage === 100) {
-      process.stdout.clearLine(0);
-      process.stdout.cursorTo(0);
-      const fileName = file ? path.basename(file) : 'Model file';
-      process.stdout.write(`Downloading ${fileName}: ${percentage}%\n`);
-      lastProgress = percentage;
-    }
-    if (percentage === 100 && lastProgress === 100) {
-      process.stdout.write('\n');
-      lastProgress = 0;
-    }
-  } else if (file) {
-    process.stdout.clearLine(0);
-    process.stdout.cursorTo(0);
-    process.stdout.write(`Downloading ${path.basename(file)}...\n`);
   }
 }
 
