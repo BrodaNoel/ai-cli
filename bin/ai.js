@@ -269,14 +269,10 @@ async function downloadLocalModel() {
   try {
     // Use pipeline to trigger download. It will cache the model files.
     // We don't need to assign it to localPipeline here, just trigger the download.
-    await pipeline(
-      'text-generation',
-      LOCAL_MODEL_ID,
-      { dtype: 'fp32' },
-      {
-        progress_callback: downloadProgressCallback,
-      }
-    );
+    await pipeline('text-generation', LOCAL_MODEL_ID, {
+      dtype: 'fp32',
+      progress_callback: downloadProgressCallback,
+    });
     console.log('Model download complete.');
     localPipelineStatus = 'unloaded';
   } catch (error) {
@@ -440,14 +436,10 @@ async function generateCommandLocal(
       `\nLoading local model "${LOCAL_MODEL_ID}"... (This may take a moment on first load)`
     );
     try {
-      localPipeline = await pipeline(
-        'text-generation',
-        LOCAL_MODEL_ID,
-        { dtype: 'fp32' },
-        {
-          progress_callback: downloadProgressCallback,
-        }
-      );
+      localPipeline = await pipeline('text-generation', LOCAL_MODEL_ID, {
+        dtype: 'fp32',
+        progress_callback: downloadProgressCallback,
+      });
       console.log('Model loaded successfully.');
       localPipelineStatus = 'loaded';
     } catch (error) {
